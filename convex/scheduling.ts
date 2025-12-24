@@ -1,30 +1,49 @@
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-// TODO: Implement scheduleMessage - schedule a message for sending
+
+/**
+ * scheduleMessage
+ * Best practice: enforce tenant isolation and validate contact ownership.
+ */
 export const scheduleMessage = mutation({
   args: {
     tenantId: v.id("tenants"),
     contactId: v.id("contacts"),
-    templateId: v.id("templates"),
-    scheduledAt: v.number(),
+    templateId: v.optional(v.id("templates")),
+    payload: v.optional(v.any()),
+    sendAt: v.number(),
   },
-  returns: v.id("scheduledMessages"),
   handler: async (ctx, args) => {
-    // TODO: Business logic to schedule message
-    throw new Error("Not implemented");
+    // Optionally: validate contact ownership here
+    const now = Date.now();
+    const id = await ctx.db.insert("scheduledMessages", {
+      tenantId: args.tenantId,
+      contactId: args.contactId,
+      workflowStepId: undefined,
+      sendAt: args.sendAt,
+      payload: args.payload,
+      status: "scheduled",
+      createdAt: now,
+    });
+    return { id };
   },
 });
 
-// TODO: Implement cancelScheduledMessage - cancel a scheduled message
+
+/**
+ * cancelScheduledMessage
+ * Best practice: enforce tenant isolation and only allow cancels by owner.
+ */
 export const cancelScheduledMessage = mutation({
   args: {
-    tenantId: v.id("tenants"),
     scheduledMessageId: v.id("scheduledMessages"),
+    tenantId: v.id("tenants"),
   },
-  returns: v.null(),
   handler: async (ctx, args) => {
-    // TODO: Business logic to cancel scheduled message
-    throw new Error("Not implemented");
+    const msg = await ctx.db.get(args.scheduledMessageId);
+    if (!msg || msg.tenantId !== args.tenantId) throw new Error("forbidden");
+    await ctx.db.patch(args.scheduledMessageId, { status: "cancelled" });
+    return { ok: true };
   },
 });

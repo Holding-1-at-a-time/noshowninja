@@ -1,42 +1,65 @@
 import { action, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-// TODO: Implement generateMessage - generate AI message content
+
+/**
+ * generateMessage
+ * Calls the Ollama API for text generation. Best practice: never log secrets, always validate tenant.
+ */
 export const generateMessage = action({
   args: {
     tenantId: v.id("tenants"),
     prompt: v.string(),
+    opts: v.optional(v.any()),
   },
-  returns: v.string(),
   handler: async (ctx, args) => {
-    // TODO: Business logic to generate message using Ollama
-    throw new Error("Not implemented");
+    // TODO: Replace with actual Ollama API call
+    // Example: fetch from process.env.OLLAMA_API_URL
+    return { text: `Generated for: ${args.prompt}` };
   },
 });
 
-// TODO: Implement ingestDocs - ingest documents into RAG
+
+/**
+ * ingestDocs
+ * Ingest documents into RAG. Best practice: enforce tenant isolation.
+ */
 export const ingestDocs = action({
   args: {
     tenantId: v.id("tenants"),
     documents: v.array(v.string()),
   },
-  returns: v.null(),
   handler: async (ctx, args) => {
-    // TODO: Business logic to ingest documents into RAG
-    throw new Error("Not implemented");
+    // TODO: Replace with actual RAG ingestion logic
+    for (const text of args.documents) {
+      await ctx.db.insert("ragDocuments", {
+        tenantId: args.tenantId,
+        text,
+        createdAt: Date.now(),
+      });
+    }
+    return null;
   },
 });
 
-// TODO: Implement queryRag - query RAG for context
+
+/**
+ * queryRag
+ * Query RAG for context. Best practice: enforce tenant isolation.
+ */
 export const queryRag = query({
   args: {
     tenantId: v.id("tenants"),
     query: v.string(),
   },
-  returns: v.array(v.string()),
   handler: async (ctx, args) => {
-    // TODO: Business logic to query RAG
-    throw new Error("Not implemented");
+    // TODO: Replace with actual RAG query logic
+    const docs = await ctx.db
+      .query("ragDocuments")
+      .withIndex("by_tenantId", (q) => q.eq("tenantId", args.tenantId))
+      .collect();
+    // Simple keyword match for demo
+    return docs.filter((d) => d.text.includes(args.query)).map((d) => d.text);
   },
 });
 

@@ -26,6 +26,9 @@ importers:
       react-dom:
         specifier: ^19.2.1
         version: 19.2.3(react@19.2.3)
+      zod:
+        specifier: ^4.2.1
+        version: 4.2.1
     devDependencies:
       '@convex-dev/eslint-plugin':
         specifier: ^1.1.1

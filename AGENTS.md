@@ -1,250 +1,362 @@
-# AGENTS.md
+AGENTS.md — NoShowNinja Automation Constitution
+This document defines how automated agents must operate within the NoShowNinja repository.
+Agents are powerful, but they must follow strict boundaries to keep the system safe, predictable, modular, and tenant‑isolated.
 
-This file defines how automated agents should operate within the **NoShowNinja** repository. It gives clear, actionable rules for agents that generate docs, tests, API routes, deployments, and other automation. Follow these instructions exactly to keep agents safe, predictable, and useful.
+Agents must treat this file as law.
+Human approval overrides agent behavior.
 
----
+1. Codebase Navigation & Architecture
+Project Layout
+Agents must understand the structure and respect boundaries:
 
-### Codebase Navigation and Architecture
+app/ — Next.js  App Router frontend (read‑only for most agents)
 
-**Purpose:** Help agents understand where to read and where to write.
+components/ — UI primitives (read‑only)
 
-- **Project root layout**
-  - `app/` — Next.js App Router frontend (read only for most agents).  
-  - `components/` — UI primitives (read only).  
-  - `convex/` — backend functions, schema, Convex Components (read for docs and tests; write only with explicit permission).  
-  - `public/` — static assets (read only).  
-  - `docs/` — documentation output (agents may write here).  
-  - `tests/` — test files and fixtures (agents may write here).  
-  - `infra/` — deployment scripts, Dockerfile, CI workflows (dev deploy agent may write here).  
-  - `.github/workflows/` — CI and deploy pipelines (dev deploy agent may modify with approval).
+convex/ — backend logic, schema, Convex Components
 
-- **Read vs Write rules**
-  - **Read everywhere.** Agents may analyze any file to produce outputs.  
-  - **Write only to designated folders:** `docs/`, `tests/`, `infra/`, `.github/workflows/` (see agent-specific boundaries below).  
-  - **Never modify** `app/` or `components/` unless an agent is explicitly authorized to change API routes under `app/api/`.  
-  - **Schema changes:** Any change to `convex/schema.ts` or other Convex schema files **requires explicit human approval** and a documented migration plan.
+read allowed
 
----
+write only with explicit permission
 
-### Code Styles and Formatting
+public/ — static assets (read‑only)
 
-**Purpose:** Keep code consistent and machine‑readable.
+docs/ — documentation (agents may write here)
 
-- **TypeScript rules**
-  - **Strict mode enabled.** No `any` unless approved and documented.  
-  - Use explicit return types for exported functions.  
-- **Formatting tools**
-  - **Prettier** for formatting. Run:  
+tests/ — unit, integration, and E2E tests (agents may write here)
 
-    ```bash
-    npx prettier --write .
-    ```
+infra/ — deployment scripts, Dockerfiles, infra configs (dev‑deploy agent may write here)
 
-  - **ESLint** for linting. Run:  
+.github/workflows/ — CI/CD pipelines (dev‑deploy agent may modify with approval)
 
-    ```bash
-    npm run lint
-    ```
+Read vs Write Rules
+Agents may read the entire repository.
 
-- **Tailwind and UI**
-  - Use Tailwind utility classes for layout and spacing. Prefer `shadcn/ui` primitives for accessible components.
-- **Agent behavior**
-  - Agents that auto‑fix style may run formatters and linters with `--fix`. They must not change logic when applying fixes.
+Agents may write only to:
 
----
+docs/
 
-### Test Protocols
+tests/
 
-**Purpose:** Ensure tests are reliable, isolated, and safe.
+infra/
 
-- **Where tests live**
-  - `tests/unit/` — unit tests for Convex functions and helpers.  
-  - `tests/integration/` — integration tests that may run against local Convex dev.  
-  - `tests/e2e/` — Playwright tests for critical user flows.
-- **Agent permissions**
-  - **Allowed:** Create and update tests and fixtures under `tests/`.  
-  - **Forbidden:** Modify source code to make tests pass. If a test fails due to implementation, open an issue or PR for human review.
-- **Mocking and isolation**
-  - Unit tests must mock external providers (Twilio, Resend, Ollama, Stripe).  
-  - Integration tests may use `npx convex dev` and seeded fixtures; they must clean up after themselves.
-- **Commands**
-  - Run unit tests:  
+.github/workflows/
 
-    ```bash
-    npm test
-    ```
+app/api/ (API‑agent only)
 
-  - Run Playwright:  
+lib/providers/ (API‑agent only)
 
-    ```bash
-    npx playwright test
-    ```
+Schema Protection
+Any modification to:
 
----
+convex/schema.ts
 
-### Build Process and Environment Settings
+convex/migrations/
 
-**Purpose:** Standardize local dev and staging builds.
+Convex table definitions
+requires explicit human approval + a migration plan.
 
-- **Local dev**
-  - Install and run:  
+Agents must never modify schema files without a migration document.
 
-    ```bash
-    npm install
-    npm run dev
-    npx convex dev
-    ```
+1. Code Style & Formatting
+TypeScript Standards
+Strict mode required
 
-- **Environment variables**
-  - Use `.env.local` for local secrets. Provide `.env.local.example` with keys and descriptions. Never commit real secrets.
-- **Staging and dev deploys**
-  - Dev deploy agent may update `infra/` and `.github/workflows/` for staging. Production deploys require explicit human approval.
-- **Docker**
-  - Dev Dockerfile allowed in `infra/`. Build command:  
+No any unless explicitly justified
 
-    ```bash
-    docker build -t noshowninja-dev:latest .
-    ```
+All exported functions must have explicit return types
 
----
+Prefer small, composable functions
 
-### Commit Message Conventions
+Formatting
+Agents may run:
 
-**Purpose:** Keep history readable and automatable.
+bash
+npx prettier --write .
+npm run lint -- --fix
+Agents must not change logic while fixing formatting.
 
-- **Format**
-  - Use conventional commits style:  
+UI Standards
+Use Tailwind utility classes
 
-    ```
-    type(scope): short summary
-    ```
+Use shadcn/ui components
 
-  - **Types:** `feat`, `fix`, `chore`, `docs`, `test`, `ci`, `refactor`, `perf`.
-- **Examples**
-  - `feat(workflow): add step ordering API`
-  - `fix(send): handle Twilio transient errors`
-- **Agent behavior**
-  - Agents that create commits must follow this format and include a short description of the change and the task ID.
+No agent may modify UI logic unless explicitly authorized
 
----
+1. Test Protocols
+Test Locations
+tests/unit/ — Convex functions, helpers
 
-### Pull Request Instructions
+tests/integration/ — Convex dev + seeded fixtures
 
-**Purpose:** Ensure PRs are reviewable and safe.
+tests/e2e/ — Playwright flows
 
-- **PR template**
-  - Summary of change, related task IDs, testing steps, and any required environment variables.
-- **Required checks**
-  - Lint, typecheck, unit tests, and CI must pass before merge.
-- **Reviewers**
-  - Assign at least one backend and one frontend reviewer for cross-cutting changes.
-- **Agent behavior**
-  - Agents may open PRs for generated docs, tests, or infra changes. For any PR that touches `convex/` schema or production deploys, require human approval and an explicit migration plan.
+Agent Permissions
+Agents may create or update tests
 
----
+Agents may not modify source code to make tests pass
 
-### Overall Project Guidelines
+If tests fail due to implementation, agents must:
 
-**Purpose:** High level rules for agents and contributors.
+Open an issue or
 
-- **Tenant isolation**
-  - All Convex functions must accept and validate `tenantId`. No cross‑tenant reads or writes.
-- **Security**
-  - Do not log secrets. Validate provider signatures for webhooks. Respect opt‑out and suppression lists.
-- **AI usage**
-  - Ollama is the required inference engine. Cache AI outputs where appropriate and avoid repeated identical calls.
-- **Reliability**
-  - Implement retries with exponential backoff for transient failures. Use Action Retrier and Workpool patterns in Convex.
+Open a PR with failing tests and request human review
 
----
+Mocking Requirements
+Unit tests must mock:
 
-### Review Checklist
+Twilio
 
-**Purpose:** Quick checklist for reviewing agent generated code.
+Resend
 
-- **General**
-  - Does the change follow commit message conventions  
-  - Are lint and typecheck passing
-- **Security**
-  - No secrets committed  
-  - Webhook signatures validated
-- **Data safety**
-  - Tenant scoping enforced  
-  - No cross‑tenant access
-- **Tests**
-  - Unit tests added for new logic  
-  - Integration or E2E tests added if behavior affects flows
-- **Docs**
-  - New public APIs documented in `docs/`
-- **Schema**
-  - Any schema change has an associated migration plan and explicit approval
+Ollama
 
----
+Stripe
 
-### Customization Tips
+Integration tests must clean up after themselves.
 
-**Purpose:** How to adapt AGENTS.md for subdirectories.
+Commands
+bash
+npm test
+npx playwright test
+4. Build Process & Environment
+Local Development
+bash
+npm install
+npm run dev
+npx convex dev
+Environment Variables
+Use .env.local
 
-- **Per‑area AGENTS.md**
-  - Create `frontend/AGENTS.md` for UI conventions and `backend/AGENTS.md` for Convex specifics. Keep root AGENTS.md authoritative for cross‑cutting rules.
-- **Evolving rules**
-  - Update AGENTS.md when introducing new components (e.g., a new Convex Component). Record the change in `docs/changes.md`.
+Provide .env.local.example
 
----
+Never commit secrets
 
-### Leveraging Scopes
+Deployments
+Dev deploy agent may update infra/ and .github/workflows/
 
-**Purpose:** Limit agent impact by scoping write permissions.
+Production deploys require human approval
 
-- **Scope examples**
-  - `docs-agent` → write `docs/` only.  
-  - `test-agent` → write `tests/` only.  
-  - `api-agent` → write `app/api/` and `lib/providers/` helpers; must ask before schema changes.  
-  - `dev-deploy-agent` → write `infra/` and `.github/workflows/`; require approval for staging deploys.
-- **Enforcement**
-  - Agents must declare their scope in PR descriptions and include a list of files they modified.
+Docker
+bash
+docker build -t noshowninja-dev:latest .
+5. Commit Message Conventions
+Agents must use Conventional Commits:
 
----
+Code
+type(scope): short summary
+Types:
 
-### Phased Implementation
+feat
 
-**Purpose:** Roll out agent capabilities gradually.
+fix
 
-- **Phase 1**
-  - Enable read‑only agents: docs generation and static analysis.  
-- **Phase 2**
-  - Allow test and lint agents to write to `tests/` and apply safe formatting fixes.  
-- **Phase 3**
-  - Enable API and deploy agents with strict approval gates for schema and staging changes.  
-- **Phase 4**
-  - Expand to advanced automation (RAG ingestion helpers, AI tuning) after operational maturity.
+chore
 
----
+docs
 
-### Regular Updates
+test
 
-**Purpose:** Keep AGENTS.md current.
+ci
 
-- Review AGENTS.md every sprint or after major architectural changes.  
-- Record updates in `docs/changes.md` with rationale and date.
+refactor
 
----
+perf
 
-### Best Practices
+Examples:
 
-- **Be explicit.** Agents must have concrete commands and clear file boundaries.  
-- **Prefer small changes.** Agents should create small, reviewable PRs.  
-- **Validate outputs.** Agents must run validation commands (lint, tests, docs build) before opening PRs.  
-- **Fail safe.** If an agent is uncertain about a risky change, it must open a draft PR and request human review.
+feat(workflow): add step ordering API
 
----
+fix(send): handle Twilio transient errors
 
-### Future Considerations
+Agents must include:
 
-- **AI helpers.** Use Ollama for AI calls and cache outputs.  
-- **Security.** Validate webhook signatures.  
-- **Data safety.** Enforce tenant isolation.  
-- **Reliability.** Implement retries and backoff.  
-- **Automation.** Use Action Retrier and Workpool patterns.
+A short description
+
+A task ID (if applicable)
+
+1. Pull Request Instructions
+Every PR must include:
+
+Summary of change
+
+Related task IDs
+
+Testing steps
+
+Required environment variables
+
+Migration notes (if schema touched)
+
+Required Checks
+Lint
+
+Typecheck
+
+Unit tests
+
+CI pipeline
+
+Reviewers
+At least one backend reviewer
+
+At least one frontend reviewer for cross‑cutting changes
+
+Agent PR Rules
+Agents may open PRs for:
+
+Docs
+
+Tests
+
+Infra
+
+API route scaffolding
+
+Agents must not merge PRs
+
+Schema‑touching PRs require:
+
+Migration plan
+
+Human approval
+
+1. Project Guidelines
+Tenant Isolation
+All Convex functions must validate tenantId
+
+No cross‑tenant reads or writes
+
+AI, analytics, and messaging must be tenant‑scoped
+
+Security
+Validate webhook signatures (Twilio, Resend, Stripe)
+
+Never log secrets
+
+Respect opt‑out and suppression lists
+
+AI Usage
+Ollama is the only inference engine
+
+AI outputs must be cached
+
+RAG must be tenant‑scoped
+
+No agent may introduce external AI services
+
+Reliability
+Use Action Retrier for transient failures
+
+Use Workpool for durable tasks
+
+Use sharded counters for metrics
+
+Use daily aggregates for dashboards
+
+1. Review Checklist
+Agents must verify:
+
+General
+Commit message format correct
+
+Lint + typecheck passing
+
+Security
+No secrets committed
+
+Webhook signatures validated
+
+Data Safety
+Tenant scoping enforced
+
+No cross‑tenant access
+
+Tests
+Unit tests added
+
+Integration/E2E tests added if needed
+
+Docs
+Public APIs documented in docs/
+
+Schema
+Migration plan included
+
+Human approval obtained
+
+1. Customization Tips
+Use frontend/AGENTS.md for UI‑specific rules
+
+Use backend/AGENTS.md for Convex‑specific rules
+
+Update AGENTS.md  when:
+
+Adding new Convex Components
+
+Changing architecture
+
+Introducing new modules
+
+Record changes in:
+
+Code
+docs/changes.md
+10. Scopes & Permissions
+Allowed Scopes
+docs-agent → docs/
+
+test-agent → tests/
+
+api-agent → app/api/, lib/providers/
+
+dev-deploy-agent → infra/, .github/workflows/
+
+Enforcement
+Agents must:
+
+Declare scope in PR description
+
+List modified files
+
+Stay within allowed directories
+
+1. Phased Implementation
+Phase 1
+Read‑only agents (docs, analysis)
+
+Phase 2
+Test + lint agents (safe writes)
+
+Phase 3
+API + deploy agents (restricted writes)
+
+Phase 4
+Advanced automation (RAG, AI tuning)
+
+1. Regular Updates
+Review AGENTS.md  every sprint
+
+Update when architecture changes
+
+Log changes in docs/changes.md
+
+1. Best Practices
+Be explicit
+
+Prefer small PRs
+
+Validate outputs
+
+Fail safe: open draft PR when uncertain
+
+1. Future Considerations
+AI helpers via Ollama
+
+Stronger schema migration tooling
+
+Automated analytics aggregation
+
+Provider‑agnostic messaging adapters
 
 ---

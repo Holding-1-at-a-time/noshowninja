@@ -1,26 +1,50 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-// TODO: Implement getOrCreateTenant - create or retrieve tenant by Clerk org ID
-export const getOrCreateTenant = query({
-  args: {
-    clerkOrgId: v.string(),
-  },
-  returns: v.id("tenants"),
+
+/**
+ * getOrCreateTenant
+ * Creates a tenant record if none exists for the given clerkOrgId.
+ * Best practice: always enforce tenant isolation and never trust client-supplied tenant IDs.
+ */
+export const getOrCreateTenant = mutation({
+  args: { clerkOrgId: v.string(), name: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    // TODO: Business logic to get or create tenant
-    throw new Error("Not implemented");
+    const { clerkOrgId, name } = args;
+    const existing = await ctx.db
+      .query("tenants")
+      .withIndex("by_clerkOrgId", (q) => q.eq("clerkOrgId", clerkOrgId))
+      .first();
+    if (existing) return existing;
+    const now = Date.now();
+    const id = await ctx.db.insert("tenants", {
+      clerkOrgId,
+      name: name || `Tenant ${clerkOrgId}`,
+      createdAt: now,
+    });
+    return { id, clerkOrgId, name: name || null, createdAt: now };
   },
 });
 
-// TODO: Implement validateTenantAccess - check if user has access to tenant
+
+/**
+ * validateTenantAccess
+ * Validate that a user has access to a tenant. Returns true or throws.
+ * Best practice: always check both user and tenant linkage.
+ */
 export const validateTenantAccess = query({
-  args: {
-    tenantId: v.id("tenants"),
-  },
+  args: { tenantId: v.id("tenants"), userId: v.id("users") },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    // TODO: Business logic to validate tenant access
-    throw new Error("Not implemented");
+    const { tenantId, userId } = args;
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_id_tenantId", (q) =>
+        q.eq("_id", userId).eq("tenantId", tenantId)
+      )
+      .filter((u) => u._id === userId)
+      .first();
+    if (!user) throw new Error("forbidden");
+    return true;
   },
 });
