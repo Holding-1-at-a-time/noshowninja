@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { v } from "convex/values";
 import { z } from "zod";
 
 // Convex-style validator for Twilio webhook args
-import { v } from "convex/values";
-
 export const twilioWebhookFields = {
   From: v.string(),
   To: v.string(),
@@ -13,7 +12,6 @@ export const twilioWebhookFields = {
 };
 
 // Zod for advanced validation (length, format, etc.)
-import { z } from "zod";
 const twilioWebhookZod = z.object({
   From: z.string().min(10),
   To: z.string().min(10),
